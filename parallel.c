@@ -76,11 +76,10 @@ unsigned char * mandelbrot(int numThreads) {
 }
 
 int main() {
-    int i;
     unsigned char *image  = mandelbrot(8);
 
     FILE *file = fopen("mandelbrot.pgm", "wb");
-    fprintf(file, "P5\\n%d %d\\n255\\n", WIDTH, HEIGHT);
+    fprintf(file, "P5\n%d %d\n255\n", WIDTH, HEIGHT);
     fwrite(image, sizeof(unsigned char), WIDTH * HEIGHT, file);
     fclose(file);
 
