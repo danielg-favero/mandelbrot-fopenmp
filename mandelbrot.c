@@ -6,9 +6,15 @@
 #define WIDTH 15360
 #define HEIGHT 8640
 
-unsigned char * mandelbrot(int num_threads) {
-    float startTime = omp_get_wtime();
+unsigned char * mandelbrot(int numThreads) {
+    float startTime, endTime;
+    float parallelTime[numThreads];
     int i, j;
+
+    for(i = 0; i < numThreads; i++) {
+        parallelTime[i] = 0;
+    }
+    
 
     int iterations = 100;
     int k;
@@ -25,10 +31,10 @@ unsigned char * mandelbrot(int num_threads) {
 
     unsigned char *image = (unsigned char *)malloc(WIDTH * HEIGHT * sizeof(unsigned char));
 
-    omp_set_num_threads(num_threads);
-    #pragma omp parallel for private(i, j, zReal, zImg, value, x, y, r2, i2, dist2, color, k) shared(image)
+    #pragma omp parallel for private(i, j, zReal, zImg, value, x, y, r2, i2, dist2, color, k, startTime, endTime) shared(image, parallelTime) num_threads(numThreads)
     for(i = 0; i < HEIGHT; i++) {
         for(j = 0; j < WIDTH; j++) {
+            startTime = omp_get_wtime();
             zReal = 0;
             zImg = 0;
 
@@ -50,6 +56,9 @@ unsigned char * mandelbrot(int num_threads) {
                 zImg = 2 * zReal * zImg + y;
                 zReal = r2 - i2 + x;
             }
+            endTime = omp_get_wtime();
+
+            parallelTime[omp_get_thread_num()] += (endTime - startTime);
 
             #pragma omp critical
             {
@@ -59,26 +68,24 @@ unsigned char * mandelbrot(int num_threads) {
         }
     }
 
-    float endTime = omp_get_wtime();
+    for(i = 0; i < numThreads; i++) {
+        printf("Thread: %d\t %.2f\n", i, parallelTime[i]);
+    }
 
-    printf("Threads: %d\t Finalizado em: %.2f\n", omp_get_num_threads(), endTime - startTime);
 
     return image;
 }
 
 int main() {
     int i;
-    for(i = 1; i <= 8; ++i) {
-        unsigned char *image  = mandelbrot(i);
+    unsigned char *image  = mandelbrot(8);
 
-        FILE *file = fopen("mandelbrot.pgm", "wb");
-        fprintf(file, "P5\\n%d %d\\n255\\n", WIDTH, HEIGHT);
-        fwrite(image, sizeof(unsigned char), WIDTH * HEIGHT, file);
-        fclose(file);
-    }
+    FILE *file = fopen("mandelbrot.pgm", "wb");
+    fprintf(file, "P5\\n%d %d\\n255\\n", WIDTH, HEIGHT);
+    fwrite(image, sizeof(unsigned char), WIDTH * HEIGHT, file);
+    fclose(file);
 
-
-    // free(image);
+    free(image);
 
     return 0;
 }
